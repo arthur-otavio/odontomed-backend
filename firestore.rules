@@ -1,8 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /users/{userId} {
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'PACIENTE'
+        && request.resource.data.profileId == userId;
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.profileId == resource.data.profileId;
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /patients/{patientId} {
+      allow create: if signedIn() && request.auth.uid == patientId;
+      allow read, update: if signedIn() && request.auth.uid == patientId;
+      allow delete: if signedIn() && request.auth.uid == patientId;
+    }
+
+    match /professionals/{professionalId} {
+      allow read: if true;
+    }
+
+    match /procedures/{procedureId} {
+      allow read: if true;
+    }
+
+    match /clinic_settings/{settingId} {
+      allow read: if true;
     }
   }
 }
