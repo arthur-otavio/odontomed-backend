@@ -1,8 +1,10 @@
 const { db, FieldValue } = require('../data/firebase');
 const { asyncHandler } = require('../utils/asyncHandler');
 
-const listProcedures = asyncHandler(async (_req, res) => {
-  const snap = await db.collection('procedures').orderBy('name').get();
+const listProcedures = asyncHandler(async (req, res) => {
+  let query = db.collection('procedures').orderBy('name');
+  if (req.query.includeInactive !== 'true') query = query.where('active', '==', true);
+  const snap = await query.get();
   res.json(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
 });
 

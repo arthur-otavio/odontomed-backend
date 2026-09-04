@@ -23,6 +23,7 @@ const availableSlots = asyncHandler(async (req, res) => {
 const listAppointments = asyncHandler(async (req, res) => {
   let query = db.collection('appointments');
   if (req.user.role === 'PACIENTE') query = query.where('patientId', '==', req.user.profileId);
+  if (req.user.role === 'PROFISSIONAL') query = query.where('professionalId', '==', req.user.profileId);
   if (req.query.professionalId) query = query.where('professionalId', '==', req.query.professionalId);
   const snap = await query.orderBy('startsAt', 'desc').limit(200).get();
   res.json(snap.docs.map(serializeAppointment));
@@ -32,37 +33,41 @@ const createAppointment = asyncHandler(async (req, res) => {
   const patientId = req.user.role === 'PACIENTE' ? req.user.profileId : req.body.patientId;
   if (!patientId) throw new HttpError(400, 'Paciente obrigatorio.');
 
-  const slot = await assertSlotAvailable({
-    professionalId: req.body.professionalId,
-    procedureId: req.body.procedureId,
-    startsAt: req.body.startsAt,
+  const result = await db.runTransaction(async (transaction) => {
+    const slot = await assertSlotAvailable({
+      professionalId: req.body.professionalId,
+      procedureId: req.body.procedureId,
+      startsAt: req.body.startsAt,
+      transaction,
+    });
+    const patientDoc = await transaction.get(db.collection('patients').doc(patientId));
+    if (!patientDoc.exists || patientDoc.data().active === false) throw new HttpError(404, 'Paciente nao encontrado.');
+
+    const ref = db.collection('appointments').doc();
+    const appointment = {
+      patientId,
+      professionalId: req.body.professionalId,
+      procedureId: req.body.procedureId,
+      professionalName: slot.professional.name,
+      procedureName: slot.procedure.name,
+      patientName: patientDoc.data().name,
+      startsAt: Timestamp.fromDate(slot.startsAt),
+      endsAt: Timestamp.fromDate(slot.endsAt),
+      status: req.user.role === 'PACIENTE' ? 'AGUARDANDO_CONFIRMACAO' : (req.body.status || 'AGUARDANDO_CONFIRMACAO'),
+      notes: req.body.notes || null,
+      createdBy: req.user.uid,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+    transaction.set(ref, appointment);
+    return { ref, appointment, slot, patientName: patientDoc.data().name };
   });
 
-  const patientDoc = await db.collection('patients').doc(patientId).get();
-  if (!patientDoc.exists) throw new HttpError(404, 'Paciente nao encontrado.');
+  const message = appointmentMessage('APPOINTMENT_CREATED', result.patientName, { startsAt: result.slot.startsAt }, result.slot.professional.name);
+  await queueNotification({ userId: patientId, patientId, appointmentId: result.ref.id, channel: 'WHATSAPP', type: 'APPOINTMENT_CREATED', message });
+  await auditLog({ actorId: req.user.uid, action: 'CREATE', entity: 'appointments', entityId: result.ref.id });
 
-  const appointment = {
-    patientId,
-    professionalId: req.body.professionalId,
-    procedureId: req.body.procedureId,
-    professionalName: slot.professional.name,
-    procedureName: slot.procedure.name,
-    patientName: patientDoc.data().name,
-    startsAt: Timestamp.fromDate(slot.startsAt),
-    endsAt: Timestamp.fromDate(slot.endsAt),
-    status: req.body.status || 'AGUARDANDO_CONFIRMACAO',
-    notes: req.body.notes || null,
-    createdBy: req.user.uid,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  };
-
-  const ref = await db.collection('appointments').add(appointment);
-  const message = appointmentMessage('APPOINTMENT_CREATED', patientDoc.data().name, { startsAt: slot.startsAt }, slot.professional.name);
-  await queueNotification({ userId: patientId, patientId, appointmentId: ref.id, channel: 'WHATSAPP', type: 'APPOINTMENT_CREATED', message });
-  await auditLog({ actorId: req.user.uid, action: 'CREATE', entity: 'appointments', entityId: ref.id });
-
-  res.status(201).json({ id: ref.id, ...appointment, startsAt: slot.startsAt.toISOString(), endsAt: slot.endsAt.toISOString() });
+  res.status(201).json({ id: result.ref.id, ...result.appointment, startsAt: result.slot.startsAt.toISOString(), endsAt: result.slot.endsAt.toISOString() });
 });
 
 const updateAppointmentStatus = asyncHandler(async (req, res) => {

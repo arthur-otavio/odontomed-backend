@@ -23,6 +23,8 @@ API Node/Express para a plataforma OdontoMed, preparada para Firebase Functions,
 npm install
 ```
 
+No Console Firebase, habilite **Authentication > Sign-in method > E-mail/senha** e crie o banco **Cloud Firestore**. Para producao, defina `FIREBASE_PROJECT_ID` com o mesmo ID presente em `.firebaserc`.
+
 ## Rodar local
 
 ```bash
@@ -39,11 +41,16 @@ Swagger: `http://localhost:3333/docs`
 npm run serve
 ```
 
-Em outro terminal:
+Para executar o seed contra os emuladores ja abertos, em outro PowerShell:
 
 ```bash
+$env:FIREBASE_AUTH_EMULATOR_HOST='127.0.0.1:9099'
+$env:FIRESTORE_EMULATOR_HOST='127.0.0.1:8080'
+$env:FIREBASE_PROJECT_ID='seu-projeto-firebase'
 npm run seed
 ```
+
+Tambem e possivel iniciar emuladores temporarios, carregar os dados e encerra-los com `npx firebase emulators:exec --only auth,firestore "node scripts/seed.js"`.
 
 Usuarios demo:
 
@@ -57,6 +64,8 @@ firebase login
 firebase use seu-projeto-firebase
 npm run deploy
 ```
+
+Antes do primeiro deploy, aplique o arquivo `.firebaserc` com o ID real do projeto. O deploy publica a API como Cloud Function em `southamerica-east1`; configure no frontend a URL `https://southamerica-east1-SEU_PROJETO.cloudfunctions.net/api/api`.
 
 ## Dados oficiais usados
 

@@ -45,6 +45,7 @@ async function seed() {
     },
     phone: '(37) 3214-5540',
     whatsapp: '(37) 3214-5540',
+    timezone: 'America/Sao_Paulo',
     businessHours,
     lgpdContact: 'privacidade@odontomed.local',
     updatedAt: FieldValue.serverTimestamp(),
