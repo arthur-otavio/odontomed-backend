@@ -25,6 +25,8 @@ npm install
 
 No Console Firebase, habilite **Authentication > Sign-in method > E-mail/senha** e crie o banco **Cloud Firestore**. Para producao, defina `FIREBASE_PROJECT_ID` com o mesmo ID presente em `.firebaserc`.
 
+Para publicar as Firebase Functions, o projeto precisa estar no plano Blaze, pois o deploy utiliza Cloud Build e Artifact Registry. Regras e indices do Firestore podem ser publicados independentemente.
+
 ## Rodar local
 
 ```bash
