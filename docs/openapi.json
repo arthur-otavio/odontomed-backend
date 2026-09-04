@@ -1,0 +1,30 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OdontoMed API",
+    "version": "1.0.0",
+    "description": "API REST para site, area do paciente, agenda e painel administrativo da OdontoMed."
+  },
+  "servers": [
+    { "url": "http://localhost:3333/api" },
+    { "url": "https://southamerica-east1-SEU_PROJETO.cloudfunctions.net/api/api" }
+  ],
+  "paths": {
+    "/public/home": { "get": { "summary": "Dados publicos do site", "responses": { "200": { "description": "OK" } } } },
+    "/auth/register": { "post": { "summary": "Cadastro de paciente", "responses": { "201": { "description": "Criado" } } } },
+    "/auth/me": { "get": { "summary": "Usuario autenticado", "responses": { "200": { "description": "OK" } } } },
+    "/professionals": { "get": { "summary": "Lista profissionais", "responses": { "200": { "description": "OK" } } } },
+    "/procedures": { "get": { "summary": "Lista procedimentos", "responses": { "200": { "description": "OK" } } } },
+    "/appointments/available-slots": { "get": { "summary": "Horarios disponiveis", "responses": { "200": { "description": "OK" } } } },
+    "/appointments": {
+      "get": { "summary": "Lista agendamentos", "responses": { "200": { "description": "OK" } } },
+      "post": { "summary": "Cria agendamento", "responses": { "201": { "description": "Criado" }, "409": { "description": "Conflito de horario" } } }
+    },
+    "/admin/dashboard": { "get": { "summary": "Dashboard administrativo", "responses": { "200": { "description": "OK" } } } }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "Firebase ID Token" }
+    }
+  }
+}
